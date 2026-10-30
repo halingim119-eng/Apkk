@@ -10,19 +10,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Unzip project
-        run: unzip -q alarm-manager.zip
+        run: |
+          ls -la
+          ZIP=$(find . -maxdepth 3 -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "저장소에서 zip 파일을 못 찾았어요. zip을 올렸는지 확인해 주세요."
+            exit 1
+          fi
+          echo "찾은 파일: $ZIP"
+          unzip -q "$ZIP" -d project
+          SETTINGS=$(find project -name settings.gradle.kts | head -n 1)
+          echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
+
       - name: Build debug APK
-        working-directory: alarm-manager
+        working-directory: ${{ env.PROJECT_DIR }}
         run: gradle assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: alarm-manager-apk
-          path: alarm-manager/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
